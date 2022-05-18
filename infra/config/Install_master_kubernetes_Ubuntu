@@ -1,0 +1,55 @@
+# Config node master with k8s
+
+# update repository package 
+apt-get update
+
+# disable swap
+swapoff -a
+cp /etc/fstab /etc/fstab.bkp
+sed -i.bak '/ swap / s/^\(.*\)$/#/g' /etc/fstab
+
+# install docker
+curl -fsSL https://get.docker.com | bash
+
+# config deamon cgroup 
+echo '{"exec-opts": ["native.cgroupdriver=systemd"],"log-driver": "json-file","log-opts": {"max-size": "100m"},"storage-driver": "overlay2"}' > /etc/docker/daemon.json
+
+mkdir -p /etc/systemd/system/docker.service.d
+
+systemctl daemon-reload
+systemctl restart docker
+
+# install repository packages kubernetes
+
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/k8s.list
+
+# update repository package
+apt-get update
+
+# install kubectl, kubeadm and kubelet 
+apt-get -y install kubectl
+apt-get -y install kubeadm
+apt-get -y install kubelet
+
+#init cluster
+kubeadm config images pull
+kubeadm init
+
+mkdir -p $HOME/.kube 
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown  $(id -u):$(id -g)  $HOME/.kube/config
+
+# autocompletion kubectl
+echo "source <(kubectl completion bash)" >> $HOME/.bashrc
+
+# pod network define - weave net 
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+#  view status cluster
+kubectl get nodes,svc,deploy,rs,rc,po -o wide
+
+# add node worker with token 
+kubeadm token create --print-join-command
+
+

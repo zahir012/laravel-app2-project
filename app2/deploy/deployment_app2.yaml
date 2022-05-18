@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app2-deploy
+spec:
+  selector:
+    matchLabels:
+      app: app2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: app2
+    spec:
+      containers:
+      - name: app2
+        image: zahirul012/laravel-app2
+        ports:
+        - containerPort: 8000
+      tolerations:
+      - key: "app2"
+        operator: "Equal"
+        value: "app2"
+        effect: "NoSchedule"     
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app2-svc
+spec:
+  type: NodePort
+  selector:
+    app: app2
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30008
+ 

@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('SCM Check') {
+            steps {
+                // Get some code from a GitHub repository
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: '']]])
+
+            }
+        }    
+
+        stage('Build docker image') {
+            
+            steps {
+                
+                script {
+                    
+                    sh 'docker build -t zahirul012/laravel-app-2.0 .'
+                }
+            }
+        }
+           
+        stage('Deploy to docker') {
+            
+            steps {
+                
+                script {
+                    
+                    sh 'docker run -d --name myapp1 -p 8989:8000 zahirul012/laravel-app-2.0'
+                }
+            }
+        }    
+        
+        stage('Push dokcer image to docker hub') {
+            
+            steps {
+                
+                script {
+                    
+                    withCredentials([string(credentialsId: 'docker', variable: 'docker')]) {
+                        
+                    sh 'docker login -u zahirul012 -p ${docker}'
+                    
+}                  
+                    sh 'docker push zahirul012/laravel-app-2.0'
+                    
+                }
+            }
+     
+        }
+        
+     stage('Deploy App on k8s') {
+      steps {
+            sshagent(['k8s']) {
+            sh "scp -o StrictHostKeyChecking=no deployment_app1.yaml root@172.105.126.222:~/home"
+            script {
+                try{
+                    sh "ssh root@172.105.126.222 kubectl apply -f deployment_app2.yaml ."
+                }catch(error){
+                    sh "ssh root@172.105.126.222 kubectl apply -f deployment_app2.yaml ."
+            }
+}
+        }
+      
+    }
+    }
+   }
+        post {
+            
+            always {
+                
+                sh 'docker logout'
+            }
+       }
+    
+}
